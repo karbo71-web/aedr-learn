@@ -2,10 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function proxy(req: NextRequest) {
+  // getToken attend un secret non-undefined (string)
+  const secret = process.env.NEXTAUTH_SECRET ?? "";
+
   const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+    req: req as any,
+    secret,
+  } as any);
 
   // Pas connecté => login
   if (!token) {
@@ -26,4 +29,3 @@ export async function proxy(req: NextRequest) {
 export const config = {
   matcher: ["/users/:path*", "/admin/:path*"],
 };
-
