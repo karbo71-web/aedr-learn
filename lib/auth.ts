@@ -1,7 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -15,36 +14,43 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Mot de passe", type: "password" },
       },
-      async authorize(
-        credentials: { email?: string; password?: string } | undefined
-      ) {
-        if (!credentials?.email || !credentials?.password) return null;
 
-        const email = credentials.email.toLowerCase().trim();
-        const password = credentials.password;
+      async authorize(credentials: { email?: string; password?: string } | undefined) {
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            password: true,
-            role: true,
-          },
-        });
+          const email = credentials.email.toLowerCase().trim();
+          const password = credentials.password;
 
-        if (!user) return null;
+          // ✅ Prisma seulement quand on a vraiment besoin (évite 500 sur /providers et /session)
+          const { prisma } = await import("./prisma");
 
-        const ok = await bcrypt.compare(password, user.password);
-        if (!ok) return null;
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              password: true,
+              role: true,
+            },
+          });
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name ?? undefined,
-          role: user.role,
-        } as any;
+          if (!user?.password) return null;
+
+          const ok = await bcrypt.compare(password, user.password);
+          if (!ok) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name ?? undefined,
+            role: user.role,
+          } as any;
+        } catch (e) {
+          console.error("NextAuth authorize error:", e);
+          return null; // ✅ on évite le 500
+        }
       },
     }),
   ],
