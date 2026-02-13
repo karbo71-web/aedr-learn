@@ -1,8 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiHandler } from "next";
 import NextAuth from "next-auth";
 import { authOptions } from "../../../lib/auth";
 
-export default function auth(req: NextApiRequest, res: NextApiResponse) {
-  // NextAuth v4 handler (cast any pour éviter les conflits de types)
+const handler: NextApiHandler = (req, res) => {
   return (NextAuth(authOptions) as any)(req, res);
-}
+};
+
+export default handler;
